@@ -1,5 +1,5 @@
 import logging
-
+import requests
 from telegram import ForceReply, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
+FASTAPI_URL = os.getenv("FASTAPI_URL")
 
 # Enable logging
 logging.basicConfig(
@@ -35,9 +36,24 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text("Help!")
 
 
+
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Echo the user message."""
-    await update.message.reply_text(update.message.text)
+    user_id = update.effective_user.id
+    user_text = update.message.text
+
+    # Send text to FastAPI backend
+    try:
+        response = requests.post(
+            FASTAPI_URL + 'process-message',
+            json={"user_id": user_id, "text": user_text}
+        )
+        result = response.json().get("reply", "Sorry, no response.")
+    except Exception as e:
+        result = f"Error contacting backend: {e}"
+
+    # Reply back to user
+    await update.message.reply_text(result)
+    
     
 async def voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Reply to the voice message."""
